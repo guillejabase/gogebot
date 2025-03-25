@@ -5,12 +5,15 @@ import Event from '../structures/Event';
 export default new Event({
     name: 'messageCreate',
 
-    run(client, message) {
-        if (message.author.bot || !message.content.startsWith(client.prefix)) {
+    async run(client, message) {
+        if (message.author.bot
+            || !message.content.startsWith(client.prefix)
+            || !message.guild
+            || !message.member) {
             return;
         }
 
-        const [name, ...args] = message.content
+        const [name, ...values] = message.content
             .slice(client.prefix.length)
             .split(/ +/g);
         const command = client.commands.find((c) => {
@@ -26,20 +29,41 @@ export default new Event({
         if (command.category === 'development' && message.author.id !== client.application.owner?.id) {
             return;
         }
+        if (command.permissions.length) {
+            const errorInfo = new EmbedBuilder();
+            const permissions = message.member.permissions;
 
-        try {
-            command.run(client, message, new Args(message, command.args, args));
+            if (!permissions.has('Administrator')) {
+                const missing = command.permissions.filter((p) => {
+                    return !permissions.has(p);
+                });
+
+                if (missing.length) {
+                    errorInfo.setDescription(
+                        `**You do not have the required permissions:**` +
+                        `\n${missing
+                            .map((p) => {
+                                return `\`${p}\``;
+                            })
+                            .join(', ')}`
+                    );
+
+                    client.embeds.push(errorInfo);
+                }
+            }
+        }
+        if (!client.embeds.length) try {
+            const args = new Args(client, message, command, values);
+
+            await command.run(client, message, args);
         } catch (error: any) {
-            const embed1 = new EmbedBuilder().setDescription(error.message);
-            const embed2 = new EmbedBuilder().setDescription(
-                `\n**Usages:**` +
-                `\n${command.usages
-                    .map((u) => `\`${client.prefix}${u}\``)
-                    .join('\n')}` +
-                `\n-# \`<required> [optional]\``
-            );
+            const errorInfo = new EmbedBuilder();
+            const usagesInfo = new EmbedBuilder();
 
-            client.embeds.push(embed1, embed2);
+            errorInfo.setDescription(error.message);
+            usagesInfo.setDescription(command.getUsages(client.prefix)!);
+
+            client.embeds.push(errorInfo, usagesInfo);
         }
 
         message.reply({

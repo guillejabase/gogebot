@@ -5,7 +5,7 @@ import type Client from './Client';
 export default class Event<K extends keyof ClientEvents> {
     public name: K;
 
-    public run: (client: Client<true>, ...args: ClientEvents[K]) => void;
+    public run: (client: Client<true>, ...args: ClientEvents[K]) => Promise<void>;
 
     constructor(options: Event<K>) {
         const { name, run } = options;

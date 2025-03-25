@@ -1,4 +1,7 @@
-import type { Channel, GuildMember, Message, Role, User } from 'discord.js';
+import type { GuildBasedChannel, GuildMember, Message, Role, User } from 'discord.js';
+
+import type Command from './Command';
+import type Client from './Client';
 
 interface BaseArg {
     name: string;
@@ -11,6 +14,10 @@ interface BooleanArg extends BaseArg {
 interface ChannelArg extends BaseArg {
     default?: boolean;
     type: 'channel';
+}
+interface CommandArg extends BaseArg {
+    default?: boolean;
+    type: 'command';
 }
 interface MemberArg extends BaseArg {
     default?: boolean;
@@ -46,6 +53,7 @@ interface UserArg extends BaseArg {
 export type Arg =
     | BooleanArg
     | ChannelArg
+    | CommandArg
     | MemberArg
     | NumberArg
     | RoleArg
@@ -53,7 +61,8 @@ export type Arg =
     | UserArg;
 export type ArgType<T extends Arg['type']> =
     T extends 'boolean' ? boolean :
-    T extends 'channel' ? Channel :
+    T extends 'channel' ? GuildBasedChannel :
+    T extends 'command' ? Command :
     T extends 'member' ? GuildMember :
     T extends 'number' ? number :
     T extends 'role' ? Role :
@@ -62,102 +71,125 @@ export type ArgType<T extends Arg['type']> =
     undefined;
 
 export default class Args {
-    constructor(private message: Message, private schema: Arg[] = [], private values: string[] = []) {
-        this.values = this.process(this.schema, values);
+    constructor(private client: Client<true>, private message: Message, private command: Command, private values: string[] = []) {
+        this.values = this.process(this.command.args, values);
     }
 
-    private process(schema: Arg[], values: string[]) {
-        if (!schema) {
+    private process(args: Arg[], values: string[]) {
+        if (!args) {
             return values;
         }
 
-        return schema.reduce((processed, arg, index) => {
-            if (arg.type == 'string' && arg.multi) {
+        return args.reduce((processed, arg, index) => {
+            if (arg.type === 'string' && arg.multi) {
                 processed.push(values.slice(index).join(' '));
             } else {
-                processed.push(values[index] ?? '');
+                processed.push(values[index] || '');
             }
 
             return processed;
         }, [] as string[]);
     }
-    private convert(arg: Arg, value: string) {
+    private async convert(arg: Arg, value?: string) {
         const guild = this.message.guild;
+        const member = this.message.member;
+
+        if (!guild || !member) {
+            return;
+        }
 
         switch (arg.type) {
             case 'boolean':
+                if (!value && arg.default) {
+                    value = arg.default.toString();
+                }
+
                 const yes = ['true', 't', 'yes', 'y'];
                 const not = ['false', 'f', 'no', 'not', 'n'];
 
-                if (yes.includes(value.toLowerCase())) {
+                if (yes.includes(value!.toLowerCase())) {
                     return true;
                 }
-                if (not.includes(value.toLowerCase())) {
+                if (not.includes(value!.toLowerCase())) {
                     return false;
                 }
 
-                throw new Error(`Expected one of: ${yes.join(', ')}, ${not.join(', ')}`);
+                throw new Error(`Expected one of: ${yes.join(', ')}, ${not.join(', ')}.`);
             case 'channel':
                 if (!value && arg.default) {
                     return this.message.channel;
                 }
-                if (!guild) {
-                    throw new Error(`This command must be run in a guild context.`);
-                }
 
-                const channelId = value.replace(/\\<#(\d+)>/, '$1');
+                const channelId = value!.replace(/\\<#(\d+)>/, '$1');
 
                 if (/^\d+$/.test(channelId)) {
                     try {
-                        return guild.channels.cache.get(channelId)!; //=> Change .get() for .fetch() (async required)
+                        return guild.channels.cache.get(channelId)!
+                            || await guild.channels.fetch(channelId);
                     } catch {
                         throw new Error(`Could not find channel with such identifier.`);
                     }
                 } else {
-                    const search = value.toLowerCase();
-
-                    const channel = guild.channels.cache.find((channel) => {
-                        return channel.name.toLowerCase().includes(search);
+                    const search = value!.toLowerCase();
+                    const channel = guild.channels.cache.find((c) => {
+                        return c.name.toLowerCase().includes(search);
                     });
 
-                    if (channel) {
-                        return channel;
-                    } else {
+                    if (!channel) {
                         throw new Error(`Could not found channel with matching name.`);
                     }
+
+                    return channel;
                 }
+            case 'command':
+                if (!value && arg.default) {
+                    return this.command.name;
+                }
+
+                const command = this.client.commands.find((c) => {
+                    return [c.alias, c.name].includes(value!);
+                });
+
+                if (!command
+                    || (command.category === 'development'
+                        && member.user.id !== this.client.application.owner?.id)) {
+                    throw new Error(`Could not found command with such name or alias.`);
+                }
+
+                return command;
             case 'member':
                 if (!value && arg.default) {
                     return this.message.member!;
                 }
 
-                const memberId = value.replace(/\\<@!?(\d+)>/, '$1');
+                const memberId = value!.replace(/\\<@!?(\d+)>/, '$1');
 
-                if (!guild) {
-                    throw new Error(`This command must be run in a guild context.`);
-                }
                 if (/^\d+$/.test(memberId)) {
                     try {
-                        return guild.members.cache.get(memberId)!; //=> Change .get() for .fetch() (async required)
+                        return guild.members.cache.get(memberId)!
+                            || await guild.members.fetch(memberId);
                     } catch {
                         throw new Error(`Could not find member with such identifier.`);
                     }
                 } else {
-                    const search = value.toLowerCase();
-
-                    const member = guild.members.cache.find((member) => {
-                        return member.nickname?.toLowerCase().includes(search)
-                            || member.user.globalName?.toLowerCase().includes(search)
-                            || member.user.username.toLowerCase().includes(search);
+                    const search = value!.toLowerCase();
+                    const member = guild.members.cache.find((m) => {
+                        return m.nickname?.toLowerCase().includes(search)
+                            || m.user.globalName?.toLowerCase().includes(search)
+                            || m.user.username.toLowerCase().includes(search);
                     });
 
-                    if (member) {
-                        return member;
-                    } else {
+                    if (!member) {
                         throw new Error(`Could not found member with matching name.`);
                     }
+
+                    return member;
                 }
             case 'number':
+                if (!value && arg.default) {
+                    value = arg.default.toString();
+                }
+
                 const number = Number(value);
 
                 if (isNaN(number)) {
@@ -183,84 +215,80 @@ export default class Args {
                     return this.message.member!.roles.highest!;
                 }
 
-                const roleId = value.replace(/\\<@!?(\d+)>/, '$1');
+                const roleId = value!.replace(/\\<@!?(\d+)>/, '$1');
 
-                if (!guild) {
-                    throw new Error(`This command must be run in a guild context.`);
-                }
                 if (/^\d+$/.test(roleId)) {
                     try {
-                        return guild.roles.cache.get(roleId)!; //=> Change .get() for .fetch() (async required)
+                        return guild.roles.cache.get(roleId)!
+                            || await guild.roles.fetch(roleId);
                     } catch {
                         throw new Error(`Could not find role with such identifier.`);
                     }
                 } else {
-                    const search = value.toLowerCase();
-
-                    const role = guild.roles.cache.find((role) => {
-                        return role.name?.toLowerCase().includes(search);
+                    const search = value!.toLowerCase();
+                    const role = guild.roles.cache.find((r) => {
+                        return r.name.toLowerCase().includes(search);
                     });
 
-                    if (role) {
-                        return role;
-                    } else {
+                    if (!role) {
                         throw new Error(`Could not found role with matching name.`);
                     }
+
+                    return role;
                 }
             case 'string':
+                if (!value && arg.default) {
+                    value = arg.default;
+                }
                 if (arg.length) {
                     const { maximum, minimum } = arg.length;
 
-                    if (maximum && value.length > maximum) {
-                        throw new Error(`Expected no more than ${maximum} characters, but got ${value.length}.`);
+                    if (maximum && value!.length > maximum) {
+                        throw new Error(`Expected no more than ${maximum} characters, but got ${value!.length}.`);
                     }
-                    if (minimum && value.length < minimum) {
-                        throw new Error(`Expected at least ${minimum} characters, but got ${value.length}.`);
+                    if (minimum && value!.length < minimum) {
+                        throw new Error(`Expected at least ${minimum} characters, but got ${value!.length}.`);
                     }
                 }
 
-                return value;
+                return value!;
             case 'user':
                 if (!value && arg.default) {
                     return this.message.author;
                 }
 
-                const userId = value.replace(/<@!?(\d+)>/, '$1');
+                const userId = value!.replace(/<@!?(\d+)>/, '$1');
 
                 if (/^\d+$/.test(userId)) {
                     try {
-                        return this.message.client.users.cache.get(userId)!; //=> Change .get() for .fetch() (async required)
+                        return this.client.users.cache.get(userId)!
+                            || await this.client.users.fetch(userId);
                     } catch {
                         throw new Error('Could not find user with such identifier.');
                     }
                 } else {
-                    if (!guild) {
-                        throw new Error('This command must be run in a guild context.');
-                    }
-
-                    const search = value.toLowerCase();
+                    const search = value!.toLowerCase();
                     const member = guild.members.cache.find((m) => {
                         return m.user.globalName?.toLowerCase().includes(search)
                             || m.user.username.toLowerCase().includes(search)
                             || m.nickname?.toLowerCase().includes(search);
                     });
 
-                    if (member) {
-                        return member.user;
-                    } else {
-                        throw new Error(`Could not found user with matching name.`);
+                    if (!member) {
+                        throw new Error(`Could not found user with matching global name, username or nickname.`);
                     }
+
+                    return member.user;
                 }
         }
     }
 
-    public get<T extends Arg['type']>(index: number) {
-        const arg = this.schema[index];
+    public async get<T extends Arg['type']>(index: number) {
+        const arg = this.command.args[index];
 
         if (!arg) {
             throw new Error(
-                '**Arguments process error:**' +
-                '\n\`Invalid argument index.\`' +
+                '**Arguments process error:** \`Invalid argument index.\`' +
                 '\n-# \`Review code.\`'
             );
         }
@@ -268,18 +296,22 @@ export default class Args {
         const value = this.values[index];
 
         if (!value && !arg.required && arg.default != undefined) {
-            return this.convert(arg, '') as ArgType<T>;
+            const converted = await this.convert(arg);
+
+            return converted as ArgType<T>;
         }
         if (arg.required && !value) {
             throw new Error(`**Missing argument:** \`${arg.name}\``);
         }
 
         try {
-            return (value ? this.convert(arg, value) : undefined) as ArgType<T>;
+            const converted = value ? await this.convert(arg, value) : undefined;
+
+            return converted as ArgType<T> | undefined;
         } catch (error: any) {
             throw new Error(
                 `**Invalid argument:** \`${arg.name}\`` +
-                `\n**${error.message}**`
+                `\n-# \`${error.message}\``
             );
         }
     }

@@ -63,4 +63,16 @@ export default class Client<R extends boolean> extends Discord<R> {
             this.on(event.name, (...args) => event.run(this as Client<true>, ...args));
         }
     }
+    public randomNumber(minimum: number, maximum: number, float?: boolean): number {
+        const number = Math.random() * (maximum - minimum) + minimum;
+
+        return float ? number : Math.floor(number);
+    }
+    public toCase(word: string) {
+        if (!word[0] || !word[1]) {
+            throw new Error(`Expected a word with 2 or more characters, but got ${word.length}.`);
+        }
+
+        return `${word[0].toUpperCase()}${word.slice(1).toLowerCase()}`;
+    }
 }

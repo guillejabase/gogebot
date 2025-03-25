@@ -3,9 +3,9 @@ import Event from '../structures/Event';
 export default new Event({
     name: 'ready',
 
-    run(client) {
+    async run(client) {
         client.application.fetch();
 
-        console.log('Logged in as', client.user.username);
+        console.log('Logged in as', `${client.user.username}#${client.user.discriminator}`);
     }
 });

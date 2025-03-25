@@ -5,14 +5,15 @@ import Command from '../../structures/Command';
 export default new Command({
     name: 'test',
     alias: 't',
+    permissions: [],
     args: [{
-        name: 'member',
-        type: 'member',
+        name: 'a1',
+        type: 'boolean',
         required: true
     }],
 
-    run(client, message, args) {
-        const arg = args.get<'member'>(0);
+    async run(client, message, args) {
+        const arg = await args.get<'boolean'>(0);
         const embed = new EmbedBuilder();
 
         embed.setDescription(`${arg}`);
