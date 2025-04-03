@@ -1,0 +1,44 @@
+{
+	"Create a new command": {
+		"scope": "typescript",
+		"prefix": "command",
+		"body": [
+			"import { EmbedBuilder } from 'discord.js';",
+			"",
+			"import Command from '../../structures/Command';",
+			"",
+			"export default new Command({",
+			"    name: '',",
+			"    alias: '',",
+			"    permissions: [],",
+			"    args: [],",
+			"",
+			"    async run(client, message, args) {",
+			"        const embed = new EmbedBuilder();",
+			"",
+			"        client.embeds.push(embed);",
+			"    }",
+			"});",
+			""
+		],
+		"description": "Creates a new command template"
+	},
+	"Create a new event": {
+		"scope": "typescript",
+		"prefix": "event",
+		"body": [
+			"import { EmbedBuilder } from 'discord.js';",
+			"",
+			"import Event from '../structures/Event';",
+			"",
+			"export default new Event({",
+			"    name: '',",
+			"",
+			"    async run(client) {",
+			"    }",
+			"});",
+			""
+		],
+		"description": "Creates a new event template"
+	}
+}

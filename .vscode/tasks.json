@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"command": "bun run ./src/index",
+			"type": "shell",
+			"problemMatcher": [],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"label": "Run",
+			"isBackground": true
+		}
+	]
+}
