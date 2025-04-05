@@ -127,7 +127,7 @@ export default class Args {
                         return guild.channels.cache.get(channelId)!
                             || await guild.channels.fetch(channelId);
                     } catch {
-                        throw new Error(`Could not find channel with such identifier.`);
+                        throw new Error('Could not find channel with such identifier.');
                     }
                 } else {
                     const search = value!.toLowerCase();
@@ -136,7 +136,7 @@ export default class Args {
                     });
 
                     if (!channel) {
-                        throw new Error(`Could not found channel with matching name.`);
+                        throw new Error('Could not found channel with matching name.');
                     }
 
                     return channel;
@@ -153,7 +153,7 @@ export default class Args {
                 if (!command
                     || (command.category === 'development'
                         && member.user.id !== this.client.application.owner?.id)) {
-                    throw new Error(`Could not found command with such name or alias.`);
+                    throw new Error('Could not found command with such name or alias.');
                 }
 
                 return command;
@@ -169,7 +169,7 @@ export default class Args {
                         return guild.members.cache.get(memberId)!
                             || await guild.members.fetch(memberId);
                     } catch {
-                        throw new Error(`Could not find member with such identifier.`);
+                        throw new Error('Could not find member with such identifier.');
                     }
                 } else {
                     const search = value!.toLowerCase();
@@ -180,7 +180,7 @@ export default class Args {
                     });
 
                     if (!member) {
-                        throw new Error(`Could not found member with matching name.`);
+                        throw new Error('Could not found member with matching name.');
                     }
 
                     return member;
@@ -222,7 +222,7 @@ export default class Args {
                         return guild.roles.cache.get(roleId)!
                             || await guild.roles.fetch(roleId);
                     } catch {
-                        throw new Error(`Could not find role with such identifier.`);
+                        throw new Error('Could not find role with such identifier.');
                     }
                 } else {
                     const search = value!.toLowerCase();
@@ -231,7 +231,7 @@ export default class Args {
                     });
 
                     if (!role) {
-                        throw new Error(`Could not found role with matching name.`);
+                        throw new Error('Could not found role with matching name.');
                     }
 
                     return role;
@@ -275,7 +275,7 @@ export default class Args {
                     });
 
                     if (!member) {
-                        throw new Error(`Could not found user with matching global name, username or nickname.`);
+                        throw new Error('Could not found user with matching global name, username or nickname.');
                     }
 
                     return member.user;

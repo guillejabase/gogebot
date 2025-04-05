@@ -23,11 +23,11 @@ export default class Command {
     }
 
     public getUsages(prefix: string) {
-        const usages = [`${this.name} ${this.args?.map((a) => {
-            return a.required ? `<${a.name}:${a.type}>` : `[${a.name}:${a.type}]`;
+        const usages = [`${this.name} ${this.args.map((a) => {
+            return a.required ? `<${a.name}>` : `[${a.name}]`;
         }).join(' ') ?? ''}`];
 
-        return usages.length
+        return this.args.length
             ? `\n**Usages**` +
             `\n${usages
                 .map((u) => {

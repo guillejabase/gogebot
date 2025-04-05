@@ -19,6 +19,8 @@ export default new Command({
             const listInfo = new EmbedBuilder();
             const categories = new Map<string, string[]>();
 
+            listInfo.setTitle('Commands List');
+
             for (const object of client.commands.values()) {
                 if (object.category === 'development') {
                     continue;
@@ -43,6 +45,7 @@ export default new Command({
         } else {
             const commandInfo = new EmbedBuilder();
 
+            commandInfo.setTitle('Command Info');
             commandInfo.setDescription(
                 `**Name:** \`${command.name}\`` +
                 `\n**Alias:** \`${command.alias}\``

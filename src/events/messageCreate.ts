@@ -26,7 +26,8 @@ export default new Event({
 
         client.embeds = [];
 
-        if (command.category === 'development' && message.author.id !== client.application.owner?.id) {
+        if (command.category === 'development'
+            && message.author.id !== client.application.owner?.id) {
             return;
         }
         if (command.permissions.length) {

@@ -123,7 +123,7 @@ export default new Command({
                         name: `${count}- ${type[activity.type]} ${activity.name}`,
                         value:
                             `**State:** \`${activity.state || 'None'}\`` +
-                            `\n **Details:** \`${activity.details || 'None'}\``,
+                            `\n**Details:** \`${activity.details || 'None'}\``,
                         inline: true
                     });
 
